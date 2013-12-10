@@ -27,10 +27,10 @@ public:
     void output(int i);
     bool empty();
     struct {
-    Instruction * EXS;
-    Instruction * IDS;
-    Instruction * IF2S;
-    Instruction * IF1S;
+    Instruction * EXS = NULL;
+    Instruction * IDS = NULL;
+    Instruction * IF2S = NULL;
+    Instruction * IF1S = NULL;
         
     } save;
 private:
@@ -45,6 +45,7 @@ private:
     Instruction ** i_mem;
     int * registers;
     int * memory;
+    int count;
     int address;
     int loop_address;
     string * loop_tag;

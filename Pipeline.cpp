@@ -12,6 +12,9 @@ Pipeline::Pipeline(Instruction ** i, int * r, int * m, string * l) {
     registers = r;
     memory = m;
     loop_tag = l;
+    stall = false;
+    resume = false;
+    count = 0;
     IF1 = NULL;
     IF2 = NULL;
     ID = NULL;
@@ -88,16 +91,27 @@ bool Pipeline::empty() {
 void Pipeline::writeBack() {
     
     WB = MEM3;
-        
+
         
     
 }    
 void Pipeline::memory3() {
     
         //MEM3 SHTUFF
-        
     MEM3 = MEM2;
-    stall = false;
+
+    if(stall)
+    {
+        count++;
+        if(count == 2)
+        {
+            stall = false;
+            resume = true;
+        }
+    }
+
+
+
     
 }
 
@@ -111,26 +125,39 @@ void Pipeline::memory2() {
 
 void Pipeline::memory1() {
    
-        
+       
     MEM1 = EX;
+
     
 }
 
-int Pipeline::execute() { 
+int Pipeline::execute() {    
     if( MEM1 != NULL  )
-    {
-      cout << MEM1->getNumber() << endl;
+    {   
         if(MEM1->getOp() == "LD" && ( MEM1->getRt() == ID->getRs()
-                || MEM1->getRt() == ID->getRt() ) ) {
+                || MEM1->getRt() == ID->getRt() ) ) {   
             stall = true;
-            save.EXS = ID;
-            EX = NULL;
-            return 0;
         }
-    }
-    EX = ID;
-    if(EX != NULL) {
-        if(EX->getOp() == "DADD" && EX->getinsType() == "r-type") {
+     }   
+     if(stall) {
+         if(count == 0)
+            {
+                save.EXS = ID;
+                EX = NULL;
+   
+            }
+            if(count == 1)
+            {
+                save.EXS = save.EXS;
+                EX = NULL;
+            }
+
+            return 0;
+     }
+  
+    if(resume) {
+          EX = save.EXS;
+          if(EX->getOp() == "DADD" && EX->getinsType() == "r-type") {
             registers[EX->getRd()] = registers[EX->getRs()] + registers[EX->getRt()];
         }
         else if(EX->getOp() == "SUB" && EX->getinsType() == "r-type") {
@@ -156,21 +183,59 @@ int Pipeline::execute() {
             }
             
         }
+          return 0;
+      }
+    EX = ID;
+    if(EX != NULL) {
+        if(EX->getOp() == "DADD" && EX->getinsType() == "r-type") {
+            registers[EX->getRd()] = registers[EX->getRs()] + registers[EX->getRt()];
+        }
+        else if(EX->getOp() == "SUB" && EX->getinsType() == "r-type") {
+            registers[EX->getRd()] = registers[EX->getRs()] - registers[EX->getRt()];
+        }
+        else if(EX->getOp() == "DADD" && EX->getinsType() == "i-type") {
+            registers[EX->getRd()] = registers[EX->getRs()] + EX->getImmediate();
+        }
+        else if(EX->getOp() == "SUB" && EX->getinsType() == "i-type") {
+            registers[EX->getRd()] = registers[EX->getRs()] - EX->getImmediate();
+        }
+       else if(EX->getOp() == "LD") {
+            address = EX->getImmediate() + registers[EX->getRs()];
+            registers[EX->getRt()] = memory[address/8];
+        }
+        else if(EX->getOp() == "SD") {
+            address = EX->getImmediate() + registers[EX->getRs()];
+            memory[address/8] = registers[EX->getRt()];
+        }
+        else if(EX->getOp() == "BNEZ") { 
+            if(registers[EX->getRs()] != 0) {
+                EX = NULL;
+            }
+            
+        }
         
     }
     
 }
 
 int Pipeline::decode() {
-
-    if( MEM1 != NULL  )
-    {
         if(stall ) {
-            save.IDS = IF2;
-            ID = NULL;
+            if(count == 0)
+            {
+                save.IDS = IF2;
+                ID = NULL;
+            }
+            if(count == 1)
+            {
+                save.IDS = save.IDS;
+                ID = NULL;
+            }
             return 0;
         }
-    }
+    if(resume) {
+          ID = save.IDS;
+          return 0;
+      }
     ID = IF2;
     if( ID != NULL ) {
         if( ID->getOp() == "BNEZ") {
@@ -187,16 +252,25 @@ int Pipeline::decode() {
 }
 
 int Pipeline::fetch2() {
-    if( MEM1 != NULL  )
-    {
     if(stall )
     {
-        save.IF2S = IF1;
-            IF2 = NULL;
-            return 0;
-
-    }
-        }
+        if(count == 0)
+            {
+                save.IF2S = IF1;
+                IF2 = NULL;
+            }
+            if(count == 1)
+            {
+                save.IF2S = save.IF2S;
+                IF2 = NULL;
+            }
+        return 0;
+    }  
+    if(resume) {
+          IF2 = save.IF2S;
+          return 0;
+      }
+    
     IF2 = IF1;
         
     
@@ -206,11 +280,28 @@ int Pipeline::fetch1(int &i) {
 
    if(stall)
     {
-       save.IF1S = i_mem[i];
+       if(count == 0 && i_mem[i] != NULL)
+            {
+            save.IF1S = i_mem[i];
+            save.IF1S->setNumber(i);
             IF1 = NULL;
-            return 0;
-        }
-   else if( i_mem[i] != NULL ) {
+            }
+            if(count == 1)
+            {
+                save.IF1S = save.IF1S;
+                IF1 = NULL;
+            }
+
+       return 0;
+    }
+   if(resume)
+   {
+       IF1 = save.IF1S;
+       resume = false;
+       count = 0;
+       return 0;
+   }
+   if( i_mem[i] != NULL ) {
         IF1 = i_mem[i];
         IF1->setNumber(i);
         i++;
@@ -218,5 +309,4 @@ int Pipeline::fetch1(int &i) {
     else{
         IF1 = NULL;
     }
-   
-}
+}   
