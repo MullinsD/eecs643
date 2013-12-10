@@ -150,7 +150,6 @@ int loadReg(ifstream &infile, int reg[]){
         else {
             infile >> value;
             index = getRegNumber(input);
-            cout << index << endl;
             reg[index] = value;
         }   
     }  

@@ -97,6 +97,7 @@ void Pipeline::memory3() {
         //MEM3 SHTUFF
         
     MEM3 = MEM2;
+    stall = false;
     
 }
 
@@ -115,7 +116,18 @@ void Pipeline::memory1() {
     
 }
 
-void Pipeline::execute() {     
+int Pipeline::execute() { 
+    if( MEM1 != NULL  )
+    {
+      cout << MEM1->getNumber() << endl;
+        if(MEM1->getOp() == "LD" && ( MEM1->getRt() == ID->getRs()
+                || MEM1->getRt() == ID->getRt() ) ) {
+            stall = true;
+            save.EXS = ID;
+            EX = NULL;
+            return 0;
+        }
+    }
     EX = ID;
     if(EX != NULL) {
         if(EX->getOp() == "DADD" && EX->getinsType() == "r-type") {
@@ -149,8 +161,16 @@ void Pipeline::execute() {
     
 }
 
-void Pipeline::decode() {
+int Pipeline::decode() {
 
+    if( MEM1 != NULL  )
+    {
+        if(stall ) {
+            save.IDS = IF2;
+            ID = NULL;
+            return 0;
+        }
+    }
     ID = IF2;
     if( ID != NULL ) {
         if( ID->getOp() == "BNEZ") {
@@ -162,21 +182,38 @@ void Pipeline::decode() {
 
         }
     }
+
     
 }
 
-void Pipeline::fetch2() {
-            IF2 = IF1;
+int Pipeline::fetch2() {
+    if( MEM1 != NULL  )
+    {
+    if(stall )
+    {
+        save.IF2S = IF1;
+            IF2 = NULL;
+            return 0;
+
+    }
+        }
+    IF2 = IF1;
         
     
 }
 
-void Pipeline::fetch1(int &i) {
-    if( i_mem[i] != NULL ) {
+int Pipeline::fetch1(int &i) {
+
+   if(stall)
+    {
+       save.IF1S = i_mem[i];
+            IF1 = NULL;
+            return 0;
+        }
+   else if( i_mem[i] != NULL ) {
         IF1 = i_mem[i];
         IF1->setNumber(i);
         i++;
-        
     }
     else{
         IF1 = NULL;
