@@ -11,18 +11,22 @@
 #include <sstream>
 #include <string.h>
 #include "Instruction.h"
+#include "Pipeline.h"
 
 using namespace std;
 
 int loadReg(ifstream &infile, int reg[]);
 int loadMem(ifstream &infile, int mem[]);
-int loadIns(ifstream &infile, Instruction ** i_mem);
+int loadIns(ifstream &infile, Instruction ** i_mem, string loop_label[]);
 int getRegNumber(string regs);
 void init(int reg[], int memory[]);
 
 int main(int argc, char** argv) {
     Instruction** i_mem;
     Instruction * test;
+    int cycle_count = 1;
+    int ins_count = 1;
+    string loop_label[50] = "";
     int reg[32];
     int memory[124];
     string input;
@@ -33,21 +37,37 @@ int main(int argc, char** argv) {
     
    ifstream infile(file.c_str());
 
-    infile >> input;         
+    infile >> input; 
     loadReg(infile, reg);
     loadMem(infile, memory);
-    loadIns(infile, i_mem);
-    
+    loadIns(infile, i_mem, loop_label);   
     infile.close();
-    cout << "Rt: " << i_mem[0]->getRt() << " Rs: " << i_mem[0]->getRs() << " Index: " << i_mem[0]->getImmediate() << endl;
+    
+    Pipeline p(i_mem, reg, memory, loop_label);
+    
 
-
+    
+    do
+    {
+     p.writeBack();
+     p.memory3();
+     p.memory2();
+     p.memory1();
+     p.execute();
+     p.decode();
+     p.fetch2();
+     p.fetch1(ins_count);
+     p.output(cycle_count);
+     
+     cycle_count++;
+    }  while(!p.empty());
+      
 }
-int loadIns(ifstream &infile, Instruction ** i_mem){
+int loadIns(ifstream &infile, Instruction ** i_mem, string loop_label[]){
     string input;
     string parse;
 
-    Instruction * i;
+
     int size;
     int index = 0;
     int immediateIndex;
@@ -58,35 +78,63 @@ int loadIns(ifstream &infile, Instruction ** i_mem){
     char rs[3] = "";
     
     while(!infile.eof()) {
+        Instruction * i = new Instruction();
         getline(infile, input);
         stringstream ss;
         ss << input;
-        while(ss >> parse) {  
-            if(strstr(parse.c_str(), ":")) {
+            while(ss >> parse) { 
+                if( parse.find(":") != -1 ) {
+                    loop_label[index] = parse;
+                    ss >> parse;
+                }
+                if(parse == "LD" || parse == "SD" ) {
+                        i->setOp( parse );
+                        ss >> parse;
+                        parse.pop_back();
+                        i->setRt(getRegNumber(parse));
+                        ss >> parse;
+                        immediateIndex = parse.find_first_of("(");
+                        immediateEnd = parse.find_first_of(")");
+                        parse.copy(immediate, immediateIndex, 0);
+                        parse.copy(rs, immediateEnd-immediateIndex - 1, immediateIndex+1);
+                        i->setImmediate(atoi(immediate));
+                        rs_string.assign(rs);
+                        i->setRs(getRegNumber(rs_string));
+                        i->setInsType("i-type");
+                    }
+                    if(parse == "DADD" || parse == "SUB") {
+                        i->setOp( parse );
+                        ss >> parse;
+                        parse.pop_back();
+                        i->setRd( getRegNumber(parse) );
+                        ss >> parse;
+                        parse.pop_back();
+                        i->setRs( getRegNumber(parse) );
+                        ss >> parse;
+                        if(parse.find("#") == -1) {
+                        i->setRt( getRegNumber(parse) );
+                        i->setInsType("r-type");
+                        }
+                        else {
+                        i->setImmediate(atoi(parse.erase(0,1).c_str()));
+                        i->setInsType("i-type");
+                             
+                    }
+                    }
+                    if( parse == "BNEZ" ) {
+                        i->setOp( parse );
+                        ss >> parse;
+                        parse.pop_back();
+                        i->setRs( getRegNumber( parse ) );
+                        ss >> parse;
+                        i->setLabel( parse );
+                    }
 
             }
-            else {
-                if(parse == "LD" || parse == "SD" ) {
-                    ss >> parse;
-                    i->setRt(getRegNumber(parse));
-                    ss >> parse;
-                    immediateIndex = parse.find_first_of("(");
-                    immediateEnd = parse.find_first_of(")");
-                    parse.copy(immediate, immediateIndex, 0);
-                    parse.copy(rs, immediateEnd-immediateIndex - 1, immediateIndex+1);
-       
-                    i->setImmediate(atoi(immediate));
-                    rs_string.assign(rs);
-                    rs_index = getRegNumber(rs_string);
-                    cout << rs_index << endl;
-                    i->setRs(rs_index);
-                }
-            }
-        }
-       // i_mem[index] = i;
+        i->setNumber(index);
+        i_mem[index] = i;
         index++;
-    } 
-    size = index + 1;
+    }
 }
 
 int loadReg(ifstream &infile, int reg[]){
@@ -102,6 +150,7 @@ int loadReg(ifstream &infile, int reg[]){
         else {
             infile >> value;
             index = getRegNumber(input);
+            cout << index << endl;
             reg[index] = value;
         }   
     }  

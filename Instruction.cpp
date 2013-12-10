@@ -14,7 +14,10 @@ Instruction::Instruction() {
     this->rt = 0;
     this->rd = 0;
     this->immediate = 0;
+    this->label = "";
     this->insType = "";
+    this->number = 0;
+    this->isStall = false;
 }
 Instruction::Instruction(string op, int rs, int rt, int rd) {
     this->op = op;

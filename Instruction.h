@@ -21,15 +21,28 @@ public:
     void setAddress(int address) {
         this->address = address;
     }
+    
+    void setNumber(int number) {
+        this->number = number;
+    }
+    
+    void setisStall(bool b) {
+        this->isStall = b;
+    }
+    
+    void setLabel(string label) {
+        this->label = label;
+    }
     void setImmediate(int immediate) {
         this->immediate = immediate;
+    }
+    void setOp(string op) {
+        this->op.assign(op);
     }
     void setInsType(string insType) {
         this->insType = insType;
     }
-    void setOp(string op) {
-        this->op = op;
-    }
+
     void setRd(int rd) {
         this->rd = rd;
     }
@@ -42,11 +55,21 @@ public:
     int getAddress() const {
         return address;
     }
+    bool getisStall() {
+        return isStall;
+    }
     int getImmediate() const {
         return immediate;
     }
+    int getNumber() const {
+        return number;
+    }
     string getinsType() const {
         return insType;
+    }
+    
+    string getLabel() const {
+        return label;
     }
     string getOp() const {
         return op;
@@ -61,13 +84,16 @@ public:
         return rt;
     }
 private:
-    int rs;
     int rd;
     int rt;
+    int rs;
     int immediate;
     string op;
     string insType;
+    string label;
     int address;
+    int number;
+    bool isStall;
 };
 
 #endif	/* INSTRUCTION_H */
