@@ -53,7 +53,7 @@ private:
     bool stall;
     bool resume;
     bool branch;
-    bool flush;
+    bool flsh;
     
 
 };

@@ -83,7 +83,7 @@ int loadIns(ifstream &infile, Instruction ** i_mem, string loop_label[]){
         ss << input;
             while(ss >> parse) { 
                 if( parse.find(":") != -1 ) {
-		    parse.pop_back();
+	            cout << parse << endl;
                     loop_label[index] = parse;
                     ss >> parse;
                 }
