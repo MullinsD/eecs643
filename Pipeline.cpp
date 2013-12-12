@@ -284,8 +284,8 @@ int Pipeline::fetch1(int &i) {
             {
             save.IF1S = i_mem[i];
             save.IF1S->setNumber(i);
-            IF1 = NULL;
-            }
+            IF1 = NULL; 
+           }
             if(count == 1)
             {
                 save.IF1S = save.IF1S;
